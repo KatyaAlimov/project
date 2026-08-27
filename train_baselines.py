@@ -13,6 +13,7 @@ invalid or pointed at the wrong reviews. We rebuild those edges here with
 
 import csv
 from collections import defaultdict
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -23,6 +24,13 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from sklearn.model_selection import train_test_split
 from torch_geometric.data import HeteroData
 from torch_geometric.nn import GATConv, GCNConv, HeteroConv, SAGEConv
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+DATA_CSV = PROJECT_ROOT / "kmeans_binary_labeled_helpfulness_data_final.csv"
+GRAPH1_PATH = PROJECT_ROOT / "review_similarity_graph.pt"
+GRAPH2_PATH = PROJECT_ROOT / "bipartite_review_apartment_graph.pt"
+RESULTS_CSV = PROJECT_ROOT / "baseline_results.csv"
+HISTORY_CSV = PROJECT_ROOT / "baseline_history.csv"
 
 print("--- Step 1: Loading graphs, repairing Graph 2 edges, building splits ---")
 
@@ -35,8 +43,8 @@ print(f"Device: {DEVICE}")
 # ---------------------------------------------------------------------------
 # Load graphs
 # ---------------------------------------------------------------------------
-graph_1 = torch.load("review_similarity_graph.pt", weights_only=False)
-graph_2 = torch.load("bipartite_review_apartment_graph.pt", weights_only=False)
+graph_1 = torch.load(GRAPH1_PATH, weights_only=False)
+graph_2 = torch.load(GRAPH2_PATH, weights_only=False)
 
 num_reviews = graph_1.num_nodes
 labels = graph_1.y.numpy()
@@ -44,7 +52,7 @@ labels = graph_1.y.numpy()
 
 def rebuild_bipartite_edges(hetero_graph: HeteroData) -> HeteroData:
     """Recompute review↔apartment edges with positional node IDs."""
-    df = pd.read_csv("kmeans_binary_labeled_helpfulness_data_final.csv")
+    df = pd.read_csv(DATA_CSV)
 
     # Same row filter as main.py: groupby('zip') drops NaN-zip rows.
     df = df[df["zip"].notna()].copy().reset_index(drop=True)
@@ -87,7 +95,7 @@ graph_2 = rebuild_bipartite_edges(graph_2)
 
 # Persist repaired edges only (raw features). Normalization is applied
 # in-memory below so re-running this script does not double-scale x.
-torch.save(graph_2, "bipartite_review_apartment_graph.pt")
+torch.save(graph_2, GRAPH2_PATH)
 
 # ---------------------------------------------------------------------------
 # Stratified 70 / 15 / 15 split (shared across all models)
@@ -114,7 +122,7 @@ graph_2["review"].train_mask = train_mask.clone()
 graph_2["review"].val_mask = val_mask.clone()
 graph_2["review"].test_mask = test_mask.clone()
 
-torch.save(graph_1, "review_similarity_graph.pt")
+torch.save(graph_1, GRAPH1_PATH)
 
 
 def standardize_features_(x: torch.Tensor, mask: torch.Tensor) -> None:
@@ -420,18 +428,18 @@ for name, m in results.items():
     print(f"{name:<28} {row}")
 print("=" * 78)
 
-with open("baseline_results.csv", "w", newline="") as f:
+with open(RESULTS_CSV, "w", newline="") as f:
     writer = csv.DictWriter(f, fieldnames=["Model", *metric_cols])
     writer.writeheader()
     for name, m in results.items():
         writer.writerow({"Model": name, **{c: m[c] for c in metric_cols}})
 
 # Epoch histories for plotting later
-with open("baseline_history.csv", "w", newline="") as f:
+with open(HISTORY_CSV, "w", newline="") as f:
     writer = csv.writer(f)
     writer.writerow(["Model", "Epoch", "Loss", "Val Acc"])
     for name, hist in histories.items():
         for i, (loss, val_acc) in enumerate(zip(hist["loss"], hist["val_acc"]), start=1):
             writer.writerow([name, i, loss, val_acc])
 
-print("\nSaved baseline_results.csv and baseline_history.csv")
+print(f"\nSaved {RESULTS_CSV} and {HISTORY_CSV}")

@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+
 from joblib import Parallel, delayed
 
 import numpy as np
@@ -9,6 +11,11 @@ from sentence_transformers import SentenceTransformer
 from textblob import TextBlob
 from torch_geometric.data import Data, HeteroData
 from tqdm import tqdm
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+DATA_CSV = PROJECT_ROOT / "kmeans_binary_labeled_helpfulness_data_final.csv"
+GRAPH1_PATH = PROJECT_ROOT / "review_similarity_graph.pt"
+GRAPH2_PATH = PROJECT_ROOT / "bipartite_review_apartment_graph.pt"
 
 N_JOBS = max(1, (os.cpu_count() or 2) - 1)
 TEXT_CHUNK = 250
@@ -123,7 +130,7 @@ def cosine_similarity_edges(features, threshold=0.75, chunk_size=SIM_CHUNK, devi
 
 def main():
     print("--- Step 1: Loading dataset ---")
-    df = pd.read_csv("kmeans_binary_labeled_helpfulness_data_final.csv")
+    df = pd.read_csv(DATA_CSV)
     df["review"] = df["review"].fillna("")
 
     df["minRent_num"] = clean_currency_series(df["minRent"])
@@ -216,8 +223,8 @@ def main():
     print(f"Number of Edges: {graph_data.num_edges}")
     print(f"Node Feature Dimension: {graph_data.num_features}")
     print(f"Target Labels Shape: {graph_data.y.shape}")
-    torch.save(graph_data, "review_similarity_graph.pt")
-    print("Graph successfully saved to 'review_similarity_graph.pt'")
+    torch.save(graph_data, GRAPH1_PATH)
+    print(f"Graph successfully saved to '{GRAPH1_PATH}'")
 
     print("\n--- Constructing Task 2: Bipartite Graph (Review-to-Apartment) ---")
     apt_mapping = {url: i for i, url in enumerate(df["url"].unique())}
@@ -256,8 +263,8 @@ def main():
 
     print("\n--- Bipartite Graph Construction Complete ---")
     print(bipartite_graph)
-    torch.save(bipartite_graph, "bipartite_review_apartment_graph.pt")
-    print("Task 2 Graph successfully saved to 'bipartite_review_apartment_graph.pt'")
+    torch.save(bipartite_graph, GRAPH2_PATH)
+    print(f"Task 2 Graph successfully saved to '{GRAPH2_PATH}'")
 
 
 if __name__ == "__main__":

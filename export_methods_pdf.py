@@ -1,6 +1,11 @@
 """Export a 1–2 page Methods draft PDF."""
 
+from pathlib import Path
+
 from fpdf import FPDF
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+OUTPUT_PDF = PROJECT_ROOT / "Methods_Draft.pdf"
 
 
 BODY = [
@@ -87,10 +92,9 @@ def main():
         pdf.multi_cell(0, 4.5, text)
         pdf.ln(2.2)
 
-    out = "/Users/alimok1/Documents/project/Methods_Draft.pdf"
-    pdf.output(out)
+    pdf.output(str(OUTPUT_PDF))
     print(f"pages={pdf.page_no()}")
-    print(out)
+    print(OUTPUT_PDF)
 
 
 if __name__ == "__main__":
