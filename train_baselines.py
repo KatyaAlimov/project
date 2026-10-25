@@ -28,6 +28,7 @@ from torch_geometric.nn import GATConv, GCNConv, HeteroConv, SAGEConv
 PROJECT_ROOT = Path(__file__).resolve().parent
 DATA_CSV = PROJECT_ROOT / "kmeans_binary_labeled_helpfulness_data_final.csv"
 GRAPH1_PATH = PROJECT_ROOT / "review_similarity_graph.pt"
+
 GRAPH2_PATH = PROJECT_ROOT / "bipartite_review_apartment_graph.pt"
 RESULTS_CSV = PROJECT_ROOT / "baseline_results.csv"
 HISTORY_CSV = PROJECT_ROOT / "baseline_history.csv"

@@ -214,17 +214,19 @@ def main():
     x = torch.tensor(node_features, dtype=torch.float)
     y = torch.tensor(df["kmeans_label"].values, dtype=torch.long)
 
-    print("Calculating edges (cosine similarity >= 0.75, chunked)...")
-    edge_index = cosine_similarity_edges(sbert_features, threshold=0.75, device=device)
+    ## Suggestion changining the cosine 
+    #### Changing the Threshold to 0.6 - 0.9 
+    for threshold in [0.6, 0.75, 0.8, 0.9]:
+        print(f"Calculating edges (cosine similarity >= {threshold}, chunked)...")
+        edge_index = cosine_similarity_edges(sbert_features, threshold=threshold, device=device)
+        ## each threshold gets its own files to train - this will result in different neighberhoods
+        graph_data = Data(x=x, edge_index=edge_index, y=y)
+        graph_file_path = PROJECT_ROOT / f"review_similarity_graph_{int(round(threshold*100))}.pt"
+        torch.save(graph_data, graph_file_path)
+        print(f"Graph with threshold {threshold} successfully saved to '{graph_file_path}'")
+        print(f" edges = {graph_data.num_edges}")    
 
-    graph_data = Data(x=x, edge_index=edge_index, y=y)
-    print("\n--- Final Graph Construction Complete ---")
-    print(f"Number of Nodes: {graph_data.num_nodes}")
-    print(f"Number of Edges: {graph_data.num_edges}")
-    print(f"Node Feature Dimension: {graph_data.num_features}")
-    print(f"Target Labels Shape: {graph_data.y.shape}")
-    torch.save(graph_data, GRAPH1_PATH)
-    print(f"Graph successfully saved to '{GRAPH1_PATH}'")
+
 
     print("\n--- Constructing Task 2: Bipartite Graph (Review-to-Apartment) ---")
     apt_mapping = {url: i for i, url in enumerate(df["url"].unique())}
