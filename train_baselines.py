@@ -2,13 +2,6 @@
 Baseline GNN evaluation on the review similarity graph (Graph 1)
 and the review–apartment bipartite graph (Graph 2).
 
-Bug this script repairs
------------------------
-Graph 2 was built with `df.index.values` after a `groupby` that dropped
-NaN-zip rows and left gaps in the pandas index. Edge endpoints therefore
-did not match positional node IDs in `x`, so most edges were either
-invalid or pointed at the wrong reviews. We rebuild those edges here with
-`np.arange(len(df))` after `reset_index(drop=True)`.
 """
 
 import csv
@@ -28,6 +21,7 @@ from torch_geometric.nn import GATConv, GCNConv, HeteroConv, SAGEConv
 PROJECT_ROOT = Path(__file__).resolve().parent
 DATA_CSV = PROJECT_ROOT / "kmeans_binary_labeled_helpfulness_data_final.csv"
 GRAPH1_PATH = PROJECT_ROOT / "review_similarity_graph.pt"
+
 GRAPH2_PATH = PROJECT_ROOT / "bipartite_review_apartment_graph.pt"
 RESULTS_CSV = PROJECT_ROOT / "baseline_results.csv"
 HISTORY_CSV = PROJECT_ROOT / "baseline_history.csv"

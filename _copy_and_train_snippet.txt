@@ -1,0 +1,52 @@
+# --- Train GCN on AND graphs (text + rating, d=2) ---
+and_paths = sorted(PROJECT_ROOT.glob("review_similarity_graph_and_d2_*.pt"))
+and_paths = [
+    p for p in and_paths
+    if int(re.search(r"(\d+)$", p.stem).group(1)) in {75, 80, 90}
+]
+
+print(f"\nDevice: {DEVICE}")
+print("Training AND graphs:", [p.name for p in and_paths])
+all_results = []
+
+for p in and_paths:
+    data = torch.load(p, weights_only=False)
+    data.train_mask = train_mask
+    data.val_mask = val_mask
+    data.test_mask = test_mask
+
+    match = re.search(r"(\d+)$", p.stem)
+    threshold = int(match.group(1)) / 100 if match else None
+
+    in_dim = data.num_features
+    num_classes = int(torch.unique(data.y).numel())
+    model = GCNBaseline(in_dim, 64, num_classes)
+
+    print(f"\nTraining on: {p.name} | threshold={threshold} | edges={data.num_edges}")
+    metrics, history = train_and_evaluate(f"GCN_AND_d2_t{threshold}", model, data)
+
+    row = {
+        "method": "and_d2",
+        "threshold": threshold,
+        "edges": int(data.num_edges),
+        **metrics,
+    }
+    all_results.append(row)
+
+print("\n========== AND (text+rating d=2) summary (GCN) ==========")
+print(f"{'t':>6} | {'edges':>10} | {'Acc':>8} | {'Macro F1':>8} | {'Val Acc':>8}")
+print("-" * 55)
+for row in all_results:
+    print(
+        f"{row['threshold']:>6} | {row['edges']:>10} | "
+        f"{row['Accuracy']:>8.4f} | {row['Macro F1']:>8.4f} | "
+        f"{row['Best Val Acc']:>8.4f}"
+    )
+
+import csv
+results_path = PROJECT_ROOT / "threshold_gcn_and_d2_results.csv"
+with results_path.open("w", newline="") as f:
+    writer = csv.DictWriter(f, fieldnames=list(all_results[0].keys()))
+    writer.writeheader()
+    writer.writerows(all_results)
+print(f"\nSaved results to {results_path}")
